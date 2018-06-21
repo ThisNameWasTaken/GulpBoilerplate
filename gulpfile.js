@@ -17,6 +17,7 @@ const del = require('del');                     // deletes a file or folder
 const size = require('gulp-size');              // displays the size of the project
 const rename = require('gulp-rename');          // renames a file
 const runSequence = require('run-sequence');    // runs tasks sequentially (they run asynchronously by default)
+const plumber = require('gulp-plumber');        // prevents task chains from being ended even if there are errors
 
 // clean the dist directory
 gulp.task('del', done =>
@@ -49,7 +50,7 @@ gulp.task('critical', () =>
         .pipe(gulp.dest('dist'))
 );
 
-gulp.task('html', done => runSequence('html-copy', 'critical', 'html-minify', () => done()))
+gulp.task('html', done => runSequence('html-copy', 'critical', 'html-minify', () => done()));
 
 // watch html files
 gulp.task('html:watch', () =>
@@ -71,6 +72,7 @@ function bundleSASS({ entry, output } = { entry: 'src/sass/main.scss', output: '
     const outputDir = splitPath.slice(0, -1).join('/');
 
     return gulp.src(entry)
+        .pipe(plumber())
         .pipe(sourcemaps.init())
         .pipe(sass({ outputStyle: 'compressed' }).on('error', sass.logError))
         .pipe(postcss([autoprefixer('last 2 version', '>= 5%')]))
@@ -107,6 +109,10 @@ function bundleJS({ entry, output } = { entry: 'src/js/main.js', output: 'dist/j
     return browserify(entry)
         .transform(babelify, { presets: ['env'] })
         .bundle()
+        .on('error', function (error) {
+            console.error(error);
+            this.emit('end');
+        })
         .pipe(source(outputFile))
         .pipe(buffer())
         .pipe(sourcemaps.init())
