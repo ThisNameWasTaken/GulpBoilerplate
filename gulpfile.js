@@ -65,8 +65,8 @@ gulp.task('html:watch', () =>
  * @param {String} param0.entry - path to the entry file
  * @param {String} param0.output - path to the output file
  */
-function bundleSASS({ entry, ouput } = { entry: 'src/sass/main.scss', ouput: 'dist/css/main.css' }) {
-    const splitPath = ouput.split('/');
+function bundleSASS({ entry, output } = { entry: 'src/sass/main.scss', output: 'dist/css/main.css' }) {
+    const splitPath = output.split('/');
     const outputFile = splitPath[splitPath.length - 1];
     const outputDir = splitPath.slice(0, -1).join('/');
 
@@ -84,7 +84,7 @@ function bundleSASS({ entry, ouput } = { entry: 'src/sass/main.scss', ouput: 'di
 gulp.task('sass', () =>
     bundleSASS({
         entry: 'src/sass/main.scss',
-        ouput: 'dist/css/main.css'
+        output: 'dist/css/main.css'
     }).pipe(browserSync.stream())
 );
 
@@ -99,8 +99,8 @@ gulp.task('sass:watch', () =>
  * @param {String} param0.entry - path to the entry file
  * @param {String} param0.output - path to the output file
  */
-function bundleJS({ entry, ouput } = { entry: 'src/js/main.js', ouput: 'dist/js/main.js' }) {
-    const splitPath = ouput.split('/');
+function bundleJS({ entry, output } = { entry: 'src/js/main.js', output: 'dist/js/main.js' }) {
+    const splitPath = output.split('/');
     const outputFile = splitPath[splitPath.length - 1];
     const outputDir = splitPath.slice(0, -1).join('/');
 
@@ -122,7 +122,7 @@ function bundleJS({ entry, ouput } = { entry: 'src/js/main.js', ouput: 'dist/js/
 gulp.task('main', () =>
     bundleJS({
         entry: 'src/js/main.js',
-        ouput: 'dist/js/main.js'
+        output: 'dist/js/main.js'
     })
 );
 
@@ -130,7 +130,7 @@ gulp.task('main', () =>
 gulp.task('sw', () =>
     bundleJS({
         entry: 'src/sw.js',
-        ouput: 'dist/sw.js'
+        output: 'dist/sw.js'
     })
 );
 
