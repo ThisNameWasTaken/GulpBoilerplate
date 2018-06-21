@@ -1,7 +1,8 @@
 const gulp = require('gulp');
 const htmlmin = require('gulp-htmlmin');        // minifies html files
-const sass = require('gulp-sass');              // compiles sass and minifies html
-const postcss = require('gulp-postcss');        // required by the autoprefixer
+const sass = require('gulp-sass');              // transpiles sass to css
+const cssnano = require('cssnano');             // minifies css
+const postcss = require('gulp-postcss');        // required by the autoprefixer and cssnano
 const autoprefixer = require('autoprefixer');   // adds vendor prefixes to html for better browser compatibility
 const critical = require('critical').stream;    // inlines critical css styles and lazy loads the rest
 const browserify = require('browserify');       // transpiles ES6 to ES5
@@ -77,8 +78,8 @@ function bundleSASS({ entry, output } = { entry: `${sourceDir}/sass/main.scss`, 
     return gulp.src(entry)
         .pipe(plumber())
         .pipe(sourcemaps.init())
-        .pipe(sass({ outputStyle: 'compressed', includePaths: ['node_modules'] }).on('error', sass.logError))
-        .pipe(postcss([autoprefixer('last 2 version', '>= 5%')]))
+        .pipe(sass({ includePaths: ['node_modules'] }).on('error', sass.logError))
+        .pipe(postcss([autoprefixer('last 2 version', '>= 5%'), cssnano()]))
         .pipe(rename(outputFile))
         .pipe(sourcemaps.write('.'))
         .pipe(size())
