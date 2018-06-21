@@ -11,6 +11,7 @@ const buffer = require('vinyl-buffer');         // makes it easier to work with 
 const uglify = require('gulp-uglify');          // minifies js code
 const sourcemaps = require('gulp-sourcemaps');  // generates source maps
 const imagemin = require('gulp-imagemin');      // optimizes images
+const jsonminify = require('gulp-jsonminify');  // minifies json files
 const browserSync = require('browser-sync').create();   // development server
 const del = require('del');                     // deletes a file or folder
 const size = require('gulp-size');              // displays the size of the project
@@ -24,13 +25,13 @@ gulp.task('del', done =>
 
 /* ====================  HTML  ==================== */
 
-// build html files
+// copy html files
 gulp.task('html-copy', () =>
     gulp.src('src/**/*.html')
         .pipe(gulp.dest('dist'))
 );
 
-// build html files
+// minify html files
 gulp.task('html-minify', () =>
     gulp.src('dist/**/*.html')
         .pipe(htmlmin({
@@ -142,6 +143,25 @@ gulp.task('js:watch', () =>
         .on('change', browserSync.reload)
 );
 
+/* ====================  JSON  ==================== */
+
+// copy and minify json files
+gulp.task('json', () =>
+    gulp.src(['src/**/*.json'])
+        .pipe(jsonminify())
+        .pipe(size())
+        .pipe(gulp.dest('dist'))
+);
+
+// watch json files
+gulp.task('json:watch', () =>
+    // save the json changes as well js files
+    // so all js files that use the changed json files
+    // are updated
+    gulp.watch('src/**/*.json', ['json', 'js'])
+        .on('change', browserSync.reload)
+);
+
 /* ====================  IMAGES  ==================== */
 
 // build images for production
@@ -184,7 +204,7 @@ gulp.task('build:prod', done =>
     // first delete the dist folder
     // then build for production
     // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', 'sass', ['html', 'js', 'images:build'], () => done())
+    runSequence('del', 'sass', ['html', 'js', 'json', 'images:build'], () => done())
 );
 
 // development build
@@ -192,11 +212,11 @@ gulp.task('build:dev', done =>
     // first delete the dist folder
     // then build for development
     // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', 'sass', ['html', 'js', 'images:dev'], () => done())
+    runSequence('del', 'sass', ['html', 'js', 'json', 'images:dev'], () => done())
 );
 
 // watch
-gulp.task('watch', ['html:watch', 'js:watch', 'sass:watch', 'images:watch']);
+gulp.task('watch', ['html:watch', 'js:watch', 'sass:watch', 'json:watch', 'images:watch']);
 
 // serve
 gulp.task('serve', done =>
