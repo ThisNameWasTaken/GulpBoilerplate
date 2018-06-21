@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "build": "gulp build:prod",
-    "start": "gulp watch"
+    "start": "gulp serve"
   },
   "author": "Adrian Dinca",
   "license": "MIT",
