@@ -3,6 +3,7 @@ const htmlmin = require('gulp-htmlmin');        // minifies html files
 const sass = require('gulp-sass');              // compiles sass and minifies html
 const postcss = require('gulp-postcss');        // required by the autoprefixer
 const autoprefixer = require('autoprefixer');   // adds vendor prefixes to html for better browser compatibility
+const critical = require('critical').stream;    // inlines critical css styles and lazy loads the rest
 const browserify = require('browserify');       // transpiles ES6 to ES5
 const babelify = require('babelify');           // transpiles ES6 to ES5
 const source = require('vinyl-source-stream');  // makes it easier to work with browserify
@@ -24,8 +25,14 @@ gulp.task('del', done =>
 /* ====================  HTML  ==================== */
 
 // build html files
-gulp.task('html', () =>
-    gulp.src('src/*.html')
+gulp.task('html-copy', () =>
+    gulp.src('src/**/*.html')
+        .pipe(gulp.dest('dist'))
+);
+
+// build html files
+gulp.task('html-minify', () =>
+    gulp.src('dist/**/*.html')
         .pipe(htmlmin({
             removeComments: true,
             collapseWhitespace: true
@@ -34,9 +41,18 @@ gulp.task('html', () =>
         .pipe(gulp.dest('dist'))
 );
 
+// inline critical styles
+gulp.task('critical', () =>
+    gulp.src('dist/**/*.html')
+        .pipe(critical({ base: 'dist/', inline: true, css: ['dist/css/main.css'] }))
+        .pipe(gulp.dest('dist'))
+);
+
+gulp.task('html', done => runSequence('html-copy', 'critical', 'html-minify', () => done()))
+
 // watch html files
 gulp.task('html:watch', () =>
-    gulp.watch('src/*.html', ['html'])
+    gulp.watch('src/**/*.html', ['html'])
         .on('change', browserSync.reload)
 );
 
@@ -167,19 +183,22 @@ gulp.task('browser-sync', () =>
 gulp.task('build:prod', done =>
     // first delete the dist folder
     // then build for production
-    runSequence('del', ['html', 'js', 'sass', 'images:build'], () => done())
+    // sass has to run before html so that crtical styles cand be inlined
+    runSequence('del', 'sass', ['html', 'js', 'images:build'], () => done())
 );
 
 // development build
 gulp.task('build:dev', done =>
     // first delete the dist folder
     // then build for development
-    runSequence('del', ['html', 'js', 'sass', 'images:dev'], () => done())
+    // sass has to run before html so that crtical styles cand be inlined
+    runSequence('del', 'sass', ['html', 'js', 'images:dev'], () => done())
 );
 
 // watch
 gulp.task('watch', done =>
     // first build for development
-    // then start watching files and start the development server
-    runSequence('build:dev', ['html:watch', 'js:watch', 'sass:watch', 'images:watch', 'browser-sync'], () => done())
+    // then start watching files 
+    // then start the development server
+    runSequence('build:dev', ['html:watch', 'js:watch', 'sass:watch', 'images:watch'], 'browser-sync', () => done())
 );
