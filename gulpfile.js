@@ -19,42 +19,45 @@ const rename = require('gulp-rename');          // renames a file
 const runSequence = require('run-sequence');    // runs tasks sequentially (they run asynchronously by default)
 const plumber = require('gulp-plumber');        // prevents task chains from being ended even if there are errors
 
-// clean the dist directory
+const sourceDir = 'src';
+const destDir = 'dist';
+
+// clean the destination directory
 gulp.task('del', done =>
-    del(['dist'], done)
+    del([destDir], done)
 );
 
 /* ====================  HTML  ==================== */
 
 // copy html files
 gulp.task('html-copy', () =>
-    gulp.src('src/**/*.html')
-        .pipe(gulp.dest('dist'))
+    gulp.src(`${sourceDir}/**/*.html`)
+        .pipe(gulp.dest(destDir))
 );
 
 // minify html files
 gulp.task('html-minify', () =>
-    gulp.src('dist/**/*.html')
+    gulp.src(`${destDir}/**/*.html`)
         .pipe(htmlmin({
             removeComments: true,
             collapseWhitespace: true
         }))
         .pipe(size())
-        .pipe(gulp.dest('dist'))
+        .pipe(gulp.dest(destDir))
 );
 
 // inline critical styles
 gulp.task('critical', () =>
-    gulp.src('dist/**/*.html')
-        .pipe(critical({ base: 'dist/', inline: true, css: ['dist/css/main.css'] }))
-        .pipe(gulp.dest('dist'))
+    gulp.src(`${destDir}/**/*.html`)
+        .pipe(critical({ base: destDir, inline: true, css: [`${destDir}/css/main.css`] }))
+        .pipe(gulp.dest(destDir))
 );
 
 gulp.task('html', done => runSequence('html-copy', 'critical', 'html-minify', () => done()));
 
 // watch html files
 gulp.task('html:watch', () =>
-    gulp.watch('src/**/*.html', ['html'])
+    gulp.watch(`${sourceDir}/**/*.html`, ['html'])
         .on('change', browserSync.reload)
 );
 
@@ -66,7 +69,7 @@ gulp.task('html:watch', () =>
  * @param {String} param0.entry - path to the entry file
  * @param {String} param0.output - path to the output file
  */
-function bundleSASS({ entry, output } = { entry: 'src/sass/main.scss', output: 'dist/css/main.css' }) {
+function bundleSASS({ entry, output } = { entry: `${sourceDir}/sass/main.scss`, output: `${destDir}/css/main.css` }) {
     const splitPath = output.split('/');
     const outputFile = splitPath[splitPath.length - 1];
     const outputDir = splitPath.slice(0, -1).join('/');
@@ -85,14 +88,14 @@ function bundleSASS({ entry, output } = { entry: 'src/sass/main.scss', output: '
 // build sass files
 gulp.task('sass', () =>
     bundleSASS({
-        entry: 'src/sass/main.scss',
-        output: 'dist/css/main.css'
+        entry: `${sourceDir}/sass/main.scss`,
+        output: `${destDir}/css/main.css`
     }).pipe(browserSync.stream())
 );
 
 // watch sass files
 gulp.task('sass:watch', () =>
-    gulp.watch('src/sass/**/*.scss', ['sass'])
+    gulp.watch(`${sourceDir}/sass/**/*.scss`, ['sass'])
 );
 
 /**
@@ -101,7 +104,7 @@ gulp.task('sass:watch', () =>
  * @param {String} param0.entry - path to the entry file
  * @param {String} param0.output - path to the output file
  */
-function bundleJS({ entry, output } = { entry: 'src/js/main.js', output: 'dist/js/main.js' }) {
+function bundleJS({ entry, output } = { entry: `${sourceDir}/js/main.js`, output: `${destDir}/js/main.js` }) {
     const splitPath = output.split('/');
     const outputFile = splitPath[splitPath.length - 1];
     const outputDir = splitPath.slice(0, -1).join('/');
@@ -127,16 +130,16 @@ function bundleJS({ entry, output } = { entry: 'src/js/main.js', output: 'dist/j
 // main.js - main script
 gulp.task('main', () =>
     bundleJS({
-        entry: 'src/js/main.js',
-        output: 'dist/js/main.js'
+        entry: `${sourceDir}/js/main.js`,
+        output: `${destDir}/js/main.js`
     })
 );
 
 // sw.js - service worker script
 gulp.task('sw', () =>
     bundleJS({
-        entry: 'src/sw.js',
-        output: 'dist/sw.js'
+        entry: `${sourceDir}/sw.js`,
+        output: `${destDir}/sw.js`
     })
 );
 
@@ -145,7 +148,7 @@ gulp.task('js', ['main', 'sw']);
 
 // watch js files
 gulp.task('js:watch', () =>
-    gulp.watch('src/js/**/*.js', ['js'])
+    gulp.watch(`${sourceDir}/js/**/*.js`, ['js'])
         .on('change', browserSync.reload)
 );
 
@@ -153,10 +156,10 @@ gulp.task('js:watch', () =>
 
 // copy and minify json files
 gulp.task('json', () =>
-    gulp.src(['src/**/*.json'])
+    gulp.src([`${sourceDir}/**/*.json`])
         .pipe(jsonminify())
         .pipe(size())
-        .pipe(gulp.dest('dist'))
+        .pipe(gulp.dest(destDir))
 );
 
 // watch json files
@@ -164,7 +167,7 @@ gulp.task('json:watch', () =>
     // save the json changes as well js files
     // so all js files that use the changed json files
     // are updated
-    gulp.watch('src/**/*.json', ['json', 'js'])
+    gulp.watch(`${sourceDir}/**/*.json`, ['json', 'js'])
         .on('change', browserSync.reload)
 );
 
@@ -172,25 +175,25 @@ gulp.task('json:watch', () =>
 
 // build images for production
 gulp.task('images:build', () =>
-    gulp.src('src/images/**')
+    gulp.src(`${sourceDir}/images/**`)
         .pipe(imagemin([
             imagemin.gifsicle({ interlaced: true }),
             imagemin.jpegtran({ progressive: true }),
             imagemin.optipng({ optimizationLevel: 7 })
         ]))
         .pipe(size())
-        .pipe(gulp.dest('dist/images'))
+        .pipe(gulp.dest(`${destDir}/images`))
 );
 
 // build images for development
 gulp.task('images:dev', () =>
-    gulp.src('src/images/**')
-        .pipe(gulp.dest('dist/images'))
+    gulp.src(`${sourceDir}/images/**`)
+        .pipe(gulp.dest(`${destDir}/images`))
 );
 
 // watch images
 gulp.task('images:watch', () =>
-    gulp.watch('src/images/**', ['images:dev'])
+    gulp.watch(`${sourceDir}/images/**`, ['images:dev'])
         .on('change', browserSync.reload)
 );
 
@@ -199,7 +202,7 @@ gulp.task('images:watch', () =>
 gulp.task('browser-sync', () =>
     browserSync.init({
         server: {
-            baseDir: 'dist'
+            baseDir: destDir
         },
         port: 3000
     })
@@ -207,7 +210,7 @@ gulp.task('browser-sync', () =>
 
 // production build
 gulp.task('build:prod', done =>
-    // first delete the dist folder
+    // first delete the destination folder
     // then build for production
     // sass has to run before html so that crtical styles cand be inlined
     runSequence('del', 'sass', ['html', 'js', 'json', 'images:build'], () => done())
@@ -215,7 +218,7 @@ gulp.task('build:prod', done =>
 
 // development build
 gulp.task('build:dev', done =>
-    // first delete the dist folder
+    // first delete the destination folder
     // then build for development
     // sass has to run before html so that crtical styles cand be inlined
     runSequence('del', 'sass', ['html', 'js', 'json', 'images:dev'], () => done())
