@@ -77,7 +77,7 @@ function bundleSASS({ entry, output } = { entry: `${sourceDir}/sass/main.scss`, 
     return gulp.src(entry)
         .pipe(plumber())
         .pipe(sourcemaps.init())
-        .pipe(sass({ outputStyle: 'compressed' }).on('error', sass.logError))
+        .pipe(sass({ outputStyle: 'compressed', includePaths: ['node_modules'] }).on('error', sass.logError))
         .pipe(postcss([autoprefixer('last 2 version', '>= 5%')]))
         .pipe(rename(outputFile))
         .pipe(sourcemaps.write('.'))
@@ -110,7 +110,14 @@ function bundleJS({ entry, output } = { entry: `${sourceDir}/js/main.js`, output
     const outputDir = splitPath.slice(0, -1).join('/');
 
     return browserify(entry)
-        .transform(babelify, { presets: ['env'] })
+        .transform(babelify, {
+            presets: ['env'],
+            // fixes this error:
+            // ParseError: 'import' and 'export' may appear only with 'sourceType: module'
+            // https://github.com/babel/babelify#why-arent-files-in-node_modules-being-transformed
+            global: true,
+            ignore: /\/node_modules\/(?!.*\/)/
+        })
         .bundle()
         .on('error', function (error) {
             console.error(error);
