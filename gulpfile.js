@@ -133,7 +133,7 @@ gulp.task('sw', () =>
     })
 );
 
-// buld js files
+// build js files
 gulp.task('js', ['main', 'sw']);
 
 // watch js files
@@ -196,9 +196,12 @@ gulp.task('build:dev', done =>
 );
 
 // watch
-gulp.task('watch', done =>
+gulp.task('watch', ['html:watch', 'js:watch', 'sass:watch', 'images:watch']);
+
+// serve
+gulp.task('serve', done =>
     // first build for development
     // then start watching files 
     // then start the development server
-    runSequence('build:dev', ['html:watch', 'js:watch', 'sass:watch', 'images:watch'], 'browser-sync', () => done())
+    runSequence('build:dev', 'watch', 'browser-sync', () => done())
 );
