@@ -15,10 +15,13 @@ const imagemin = require('gulp-imagemin');      // optimizes images
 const jsonminify = require('gulp-jsonminify');  // minifies json files
 const browserSync = require('browser-sync').create();   // development server
 const del = require('del');                     // deletes a file or folder
-const sizereport = require('gulp-sizereport');              // displays the size of the project
+const sizereport = require('gulp-sizereport');  // displays the size of the project
 const rename = require('gulp-rename');          // renames a file
 const runSequence = require('run-sequence');    // runs tasks sequentially (they run asynchronously by default)
 const plumber = require('gulp-plumber');        // prevents task chains from being ended even if there are errors
+const rev = require('gulp-rev');                // handles static asset revisioning by appending content hash to filenames unicorn.css → unicorn-d41d8cd98f.css
+const revRewrite = require('gulp-rev-rewrite'); // rewrites occurences of filenames which have been renamed
+const revDelete = require('gulp-rev-delete-original'); // deletes original files after rev
 
 const sourceDir = 'src';
 const destDir = 'dist';
@@ -47,13 +50,15 @@ gulp.task('html-minify', () =>
 );
 
 // inline critical styles
-gulp.task('critical', () =>
-    gulp.src(`${destDir}/**/*.html`)
-        .pipe(critical({ base: destDir, inline: true, css: [`${destDir}/css/main.css`] }))
+gulp.task('critical', function () {
+    const revManifest = require(`./${destDir}/rev-manifest.json`);
+    console.log(`${destDir}/css/${revManifest['main.css']}`);
+    return gulp.src(`${destDir}/**/*.html`)
+        .pipe(critical({ base: destDir + '/', inline: true, css: [`${destDir}/css/${revManifest['main.css']}`] }))
         .pipe(gulp.dest(destDir))
-);
+});
 
-gulp.task('html', done => runSequence('html-copy', 'critical', 'html-minify', () => done()));
+gulp.task('html', done => runSequence('html-copy', 'revRewrite', 'critical', 'html-minify', () => done()));
 
 // watch html files
 gulp.task('html:watch', () =>
@@ -80,8 +85,15 @@ function bundleSASS({ entry, output } = { entry: `${sourceDir}/sass/main.scss`, 
         .pipe(sass({ includePaths: ['node_modules'] }).on('error', sass.logError))
         .pipe(postcss([autoprefixer('last 2 version', '>= 5%'), cssnano()]))
         .pipe(rename(outputFile))
+        .pipe(rev())
+        .pipe(revDelete()) // Remove the unrevved files
         .pipe(sourcemaps.write('.'))
-        .pipe(gulp.dest(outputDir));
+        .pipe(gulp.dest(outputDir))
+        .pipe(rev.manifest({
+            base: './dist/',
+            merge: true
+        }))
+        .pipe(gulp.dest('dist'));
 }
 
 // build sass files
@@ -126,8 +138,15 @@ function bundleJS({ entry, output } = { entry: `${sourceDir}/js/main.js`, output
         .pipe(buffer())
         .pipe(sourcemaps.init())
         .pipe(uglify())
+        .pipe(rev())
+        .pipe(revDelete()) // Remove the unrevved files
         .pipe(sourcemaps.write('.'))
-        .pipe(gulp.dest(outputDir));
+        .pipe(gulp.dest(outputDir))
+        .pipe(rev.manifest({
+            base: './dist/',
+            merge: true
+        }))
+        .pipe(gulp.dest('dist'));
 }
 
 /* ====================  JAVASCRIPT  ==================== */
@@ -200,6 +219,29 @@ gulp.task('images:watch', () =>
         .on('change', browserSync.reload)
 );
 
+/* ====================  ASSET REVISION  ==================== */
+
+gulp.task('copy-rev-manifest', () =>
+    gulp.src('rev-manifest.json')
+        .pipe(gulp.dest(destDir))
+);
+
+gulp.task('delete-rev-manifest', done =>
+    del('rev-manifest.json', done)
+);
+
+gulp.task('move-rev-manifest', done =>
+    runSequence('copy-rev-manifest', 'delete-rev-manifest', () => done())
+);
+
+gulp.task('revRewrite', ['move-rev-manifest'], function () {
+    const manifest = gulp.src('dist/rev-manifest.json');
+
+    return gulp.src('dist/**/*')
+        .pipe(revRewrite({ manifest: manifest }))
+        .pipe(gulp.dest('dist'));
+});
+
 /* ====================  SIZE  ==================== */
 
 gulp.task('sizereport', () =>
@@ -227,7 +269,7 @@ gulp.task('build:prod', done =>
     // first delete the destination folder
     // then build for production
     // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', 'sass', ['html', 'js', 'json', 'images:build'], 'sizereport', () => done())
+    runSequence('del', 'html-copy', ['sass', 'js', 'json', 'images:build'], 'revRewrite', 'critical', 'html-minify', 'sizereport', () => done())
 );
 
 // development build
@@ -235,7 +277,7 @@ gulp.task('build:dev', done =>
     // first delete the destination folder
     // then build for development
     // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', 'sass', ['html', 'js', 'json', 'images:dev'], 'sizereport', () => done())
+    runSequence('del', 'html-copy', ['sass', 'js', 'json', 'images:dev'], 'revRewrite', 'critical', 'html-minify', 'sizereport', () => done())
 );
 
 // watch
