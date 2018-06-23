@@ -15,7 +15,7 @@ const imagemin = require('gulp-imagemin');      // optimizes images
 const jsonminify = require('gulp-jsonminify');  // minifies json files
 const browserSync = require('browser-sync').create();   // development server
 const del = require('del');                     // deletes a file or folder
-const size = require('gulp-size');              // displays the size of the project
+const sizereport = require('gulp-sizereport');              // displays the size of the project
 const rename = require('gulp-rename');          // renames a file
 const runSequence = require('run-sequence');    // runs tasks sequentially (they run asynchronously by default)
 const plumber = require('gulp-plumber');        // prevents task chains from being ended even if there are errors
@@ -43,7 +43,6 @@ gulp.task('html-minify', () =>
             removeComments: true,
             collapseWhitespace: true
         }))
-        .pipe(size())
         .pipe(gulp.dest(destDir))
 );
 
@@ -82,7 +81,6 @@ function bundleSASS({ entry, output } = { entry: `${sourceDir}/sass/main.scss`, 
         .pipe(postcss([autoprefixer('last 2 version', '>= 5%'), cssnano()]))
         .pipe(rename(outputFile))
         .pipe(sourcemaps.write('.'))
-        .pipe(size())
         .pipe(gulp.dest(outputDir));
 }
 
@@ -128,7 +126,6 @@ function bundleJS({ entry, output } = { entry: `${sourceDir}/js/main.js`, output
         .pipe(buffer())
         .pipe(sourcemaps.init())
         .pipe(uglify())
-        .pipe(size())
         .pipe(sourcemaps.write('.'))
         .pipe(gulp.dest(outputDir));
 }
@@ -166,7 +163,6 @@ gulp.task('js:watch', () =>
 gulp.task('json', () =>
     gulp.src([`${sourceDir}/**/*.json`])
         .pipe(jsonminify())
-        .pipe(size())
         .pipe(gulp.dest(destDir))
 );
 
@@ -189,7 +185,6 @@ gulp.task('images:build', () =>
             imagemin.jpegtran({ progressive: true }),
             imagemin.optipng({ optimizationLevel: 7 })
         ]))
-        .pipe(size())
         .pipe(gulp.dest(`${destDir}/images`))
 );
 
@@ -203,6 +198,17 @@ gulp.task('images:dev', () =>
 gulp.task('images:watch', () =>
     gulp.watch(`${sourceDir}/images/**`, ['images:dev'])
         .on('change', browserSync.reload)
+);
+
+/* ====================  SIZE  ==================== */
+
+gulp.task('sizereport', () =>
+    gulp.src([
+        '!./dist/**/*.map', // ignore sourcemaps
+        './dist/**/*'
+    ]).pipe(sizereport({
+        gzip: true
+    }))
 );
 
 /* ====================  BROWSER-SYNC  ==================== */
@@ -221,7 +227,7 @@ gulp.task('build:prod', done =>
     // first delete the destination folder
     // then build for production
     // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', 'sass', ['html', 'js', 'json', 'images:build'], () => done())
+    runSequence('del', 'sass', ['html', 'js', 'json', 'images:build'], 'sizereport', () => done())
 );
 
 // development build
@@ -229,7 +235,7 @@ gulp.task('build:dev', done =>
     // first delete the destination folder
     // then build for development
     // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', 'sass', ['html', 'js', 'json', 'images:dev'], () => done())
+    runSequence('del', 'sass', ['html', 'js', 'json', 'images:dev'], 'sizereport', () => done())
 );
 
 // watch
