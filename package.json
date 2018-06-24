@@ -26,6 +26,9 @@
     "gulp-plumber": "^1.2.0",
     "gulp-postcss": "^7.0.1",
     "gulp-rename": "^1.2.3",
+    "gulp-rev": "^8.1.1",
+    "gulp-rev-delete-original": "^0.2.3",
+    "gulp-rev-rewrite": "^1.1.1",
     "gulp-sass": "^4.0.1",
     "gulp-sizereport": "^1.2.0",
     "gulp-sourcemaps": "^2.6.4",
@@ -33,5 +36,12 @@
     "run-sequence": "^2.2.1",
     "vinyl-buffer": "^1.0.1",
     "vinyl-source-stream": "^2.0.0"
+  },
+  "dependencies": {
+    "@material/button": "^0.36.1",
+    "@material/dialog": "^0.36.1",
+    "@material/list": "^0.36.0",
+    "@material/ripple": "^0.36.0",
+    "@material/theme": "^0.35.0"
   }
 }
