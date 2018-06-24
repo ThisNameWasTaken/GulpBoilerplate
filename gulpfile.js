@@ -52,8 +52,9 @@ gulp.task('html-minify', () =>
 // inline critical styles
 gulp.task('critical', function () {
     const revManifest = require(`./${destDir}/rev-manifest.json`);
+    console.log(`${destDir}/css/${revManifest['main.css']}`);
     return gulp.src(`${destDir}/**/*.html`)
-        .pipe(critical({ base: destDir, inline: true, css: [`${destDir}/${revManifest['css/main.css']}`] }))
+        .pipe(critical({ base: destDir + '/', inline: true, css: [`${destDir}/css/${revManifest['main.css']}`] }))
         .pipe(gulp.dest(destDir))
 });
 
@@ -84,8 +85,15 @@ function bundleSASS({ entry, output } = { entry: `${sourceDir}/sass/main.scss`, 
         .pipe(sass({ includePaths: ['node_modules'] }).on('error', sass.logError))
         .pipe(postcss([autoprefixer('last 2 version', '>= 5%'), cssnano()]))
         .pipe(rename(outputFile))
+        .pipe(rev())
+        .pipe(revDelete()) // Remove the unrevved files
         .pipe(sourcemaps.write('.'))
-        .pipe(gulp.dest(outputDir));
+        .pipe(gulp.dest(outputDir))
+        .pipe(rev.manifest({
+            base: './dist/',
+            merge: true
+        }))
+        .pipe(gulp.dest('dist'));
 }
 
 // build sass files
@@ -130,8 +138,15 @@ function bundleJS({ entry, output } = { entry: `${sourceDir}/js/main.js`, output
         .pipe(buffer())
         .pipe(sourcemaps.init())
         .pipe(uglify())
+        .pipe(rev())
+        .pipe(revDelete()) // Remove the unrevved files
         .pipe(sourcemaps.write('.'))
-        .pipe(gulp.dest(outputDir));
+        .pipe(gulp.dest(outputDir))
+        .pipe(rev.manifest({
+            base: './dist/',
+            merge: true
+        }))
+        .pipe(gulp.dest('dist'));
 }
 
 /* ====================  JAVASCRIPT  ==================== */
@@ -206,20 +221,24 @@ gulp.task('images:watch', () =>
 
 /* ====================  ASSET REVISION  ==================== */
 
-gulp.task('revision', () =>
-    gulp.src('dist/**/*.{css,js}')
-        .pipe(rev())
-        .pipe(revDelete()) // Remove the unrevved files
-        .pipe(gulp.dest('dist'))
-        .pipe(rev.manifest())
-        .pipe(gulp.dest('dist'))
+gulp.task('copy-rev-manifest', () =>
+    gulp.src('rev-manifest.json')
+        .pipe(gulp.dest(destDir))
 );
 
-gulp.task('revRewrite', ['revision'], function () {
+gulp.task('delete-rev-manifest', done =>
+    del('rev-manifest.json', done)
+);
+
+gulp.task('move-rev-manifest', () =>
+    runSequence('copy-rev-manifest', 'delete-rev-manifest')
+);
+
+gulp.task('revRewrite', function () {
     const manifest = gulp.src('dist/rev-manifest.json');
 
     return gulp.src('dist/**/*')
-        .pipe(revRewrite({ manifest }))
+        .pipe(revRewrite({ manifest: manifest }))
         .pipe(gulp.dest('dist'));
 });
 
@@ -250,7 +269,7 @@ gulp.task('build:prod', done =>
     // first delete the destination folder
     // then build for production
     // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', ['sass', 'js', 'json', 'images:build'], 'html', 'sizereport', () => done())
+    runSequence('del', 'html-copy', ['sass', 'js', 'json', 'images:build'], 'move-rev-manifest', 'revRewrite', 'critical', 'html-minify', 'sizereport', () => done())
 );
 
 // development build
@@ -258,7 +277,7 @@ gulp.task('build:dev', done =>
     // first delete the destination folder
     // then build for development
     // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', ['sass', 'js', 'json', 'images:dev'], 'html', 'sizereport', () => done())
+    runSequence('del', 'html-copy', ['sass', 'js', 'json', 'images:dev'], 'move-rev-manifest', 'revRewrite', 'critical', 'html-minify', 'sizereport', () => done())
 );
 
 // watch
