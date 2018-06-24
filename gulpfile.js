@@ -50,13 +50,14 @@ gulp.task('html-minify', () =>
 );
 
 // inline critical styles
-gulp.task('critical', () =>
-    gulp.src(`${destDir}/**/*.html`)
-        .pipe(critical({ base: destDir, inline: true, css: [`${destDir}/css/main.css`] }))
+gulp.task('critical', function () {
+    const revManifest = require(`./${destDir}/rev-manifest.json`);
+    return gulp.src(`${destDir}/**/*.html`)
+        .pipe(critical({ base: destDir, inline: true, css: [`${destDir}/${revManifest['css/main.css']}`] }))
         .pipe(gulp.dest(destDir))
-);
+});
 
-gulp.task('html', done => runSequence('html-copy', 'critical', 'html-minify', () => done()));
+gulp.task('html', done => runSequence('html-copy', 'revRewrite', 'critical', 'html-minify', () => done()));
 
 // watch html files
 gulp.task('html:watch', () =>
@@ -249,7 +250,7 @@ gulp.task('build:prod', done =>
     // first delete the destination folder
     // then build for production
     // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', ['sass', 'js', 'json', 'images:build'], 'html', 'revRewrite', 'sizereport', () => done())
+    runSequence('del', ['sass', 'js', 'json', 'images:build'], 'html', 'sizereport', () => done())
 );
 
 // development build
@@ -257,7 +258,7 @@ gulp.task('build:dev', done =>
     // first delete the destination folder
     // then build for development
     // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', ['sass', 'js', 'json', 'images:dev'], 'html', 'revRewrite', 'sizereport', () => done())
+    runSequence('del', ['sass', 'js', 'json', 'images:dev'], 'html', 'sizereport', () => done())
 );
 
 // watch
