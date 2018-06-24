@@ -230,11 +230,11 @@ gulp.task('delete-rev-manifest', done =>
     del('rev-manifest.json', done)
 );
 
-gulp.task('move-rev-manifest', () =>
-    runSequence('copy-rev-manifest', 'delete-rev-manifest')
+gulp.task('move-rev-manifest', done =>
+    runSequence('copy-rev-manifest', 'delete-rev-manifest', () => done())
 );
 
-gulp.task('revRewrite', function () {
+gulp.task('revRewrite', ['move-rev-manifest'], function () {
     const manifest = gulp.src('dist/rev-manifest.json');
 
     return gulp.src('dist/**/*')
@@ -269,7 +269,7 @@ gulp.task('build:prod', done =>
     // first delete the destination folder
     // then build for production
     // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', 'html-copy', ['sass', 'js', 'json', 'images:build'], 'move-rev-manifest', 'revRewrite', 'critical', 'html-minify', 'sizereport', () => done())
+    runSequence('del', 'html-copy', ['sass', 'js', 'json', 'images:build'], 'revRewrite', 'critical', 'html-minify', 'sizereport', () => done())
 );
 
 // development build
@@ -277,7 +277,7 @@ gulp.task('build:dev', done =>
     // first delete the destination folder
     // then build for development
     // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', 'html-copy', ['sass', 'js', 'json', 'images:dev'], 'move-rev-manifest', 'revRewrite', 'critical', 'html-minify', 'sizereport', () => done())
+    runSequence('del', 'html-copy', ['sass', 'js', 'json', 'images:dev'], 'revRewrite', 'critical', 'html-minify', 'sizereport', () => done())
 );
 
 // watch
