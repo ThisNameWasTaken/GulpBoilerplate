@@ -4,8 +4,8 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "build": "gulp build:prod",
-    "start": "gulp serve"
+    "build": "gulp build",
+    "start": "gulp serve --development"
   },
   "author": "Adrian Dinca",
   "license": "MIT",
@@ -21,13 +21,13 @@
     "del": "^3.0.0",
     "gulp": "^3.9.1",
     "gulp-htmlmin": "^4.0.0",
+    "gulp-if": "^2.0.2",
     "gulp-imagemin": "^4.1.0",
     "gulp-jsonminify": "^1.1.0",
     "gulp-plumber": "^1.2.0",
     "gulp-postcss": "^7.0.1",
     "gulp-rename": "^1.2.3",
     "gulp-rev": "^8.1.1",
-    "gulp-rev-delete-original": "^0.2.3",
     "gulp-rev-rewrite": "^1.1.1",
     "gulp-sass": "^4.0.1",
     "gulp-sizereport": "^1.2.0",

@@ -21,10 +21,14 @@ const runSequence = require('run-sequence');    // runs tasks sequentially (they
 const plumber = require('gulp-plumber');        // prevents task chains from being ended even if there are errors
 const rev = require('gulp-rev');                // handles static asset revisioning by appending content hash to filenames unicorn.css → unicorn-d41d8cd98f.css
 const revRewrite = require('gulp-rev-rewrite'); // rewrites occurences of filenames which have been renamed
-const revDelete = require('gulp-rev-delete-original'); // deletes original files after rev
+const IF = require('gulp-if');                  // helps with conditional piping
 
 const sourceDir = 'src';
 const destDir = 'dist';
+
+// environment constants
+const IS_DEV = process.argv.includes('--development');
+const IS_PROD = !IS_DEV;
 
 // clean the destination directory
 gulp.task('del', done =>
@@ -41,24 +45,32 @@ gulp.task('html-copy', () =>
 
 // minify html files
 gulp.task('html-minify', () =>
-    gulp.src(`${destDir}/**/*.html`)
-        .pipe(htmlmin({
-            removeComments: true,
-            collapseWhitespace: true
-        }))
-        .pipe(gulp.dest(destDir))
+    IS_DEV ?
+        false :
+        gulp.src(`${destDir}/**/*.html`)
+            .pipe(htmlmin({
+                removeComments: true,
+                collapseWhitespace: true
+            }))
+            .pipe(gulp.dest(destDir))
 );
 
 // inline critical styles
 gulp.task('critical', function () {
     const revManifest = require(`./${destDir}/rev-manifest.json`);
-    console.log(`${destDir}/css/${revManifest['main.css']}`);
+
     return gulp.src(`${destDir}/**/*.html`)
         .pipe(critical({ base: destDir + '/', inline: true, css: [`${destDir}/css/${revManifest['main.css']}`] }))
         .pipe(gulp.dest(destDir))
 });
 
-gulp.task('html', done => runSequence('html-copy', 'revRewrite', 'critical', 'html-minify', () => done()));
+
+// build
+gulp.task('html', done => IS_PROD ?
+    runSequence('html-copy', 'rev-rewrite', 'critical', 'html-minify', () => done()) :
+    runSequence('html-copy', () => done())
+);
+
 
 // watch html files
 gulp.task('html:watch', () =>
@@ -70,7 +82,7 @@ gulp.task('html:watch', () =>
 
 /**
  * Bundles a sass file from a given entry path to a given output path
- * @param {*} param0 
+ * @param {Object} param0 
  * @param {String} param0.entry - path to the entry file
  * @param {String} param0.output - path to the output file
  */
@@ -81,19 +93,21 @@ function bundleSASS({ entry, output } = { entry: `${sourceDir}/sass/main.scss`, 
 
     return gulp.src(entry)
         .pipe(plumber())
-        .pipe(sourcemaps.init())
+        .pipe(IF(IS_PROD, sourcemaps.init()))
         .pipe(sass({ includePaths: ['node_modules'] }).on('error', sass.logError))
-        .pipe(postcss([autoprefixer('last 2 version', '>= 5%'), cssnano()]))
-        .pipe(rename(outputFile))
-        .pipe(rev())
-        .pipe(revDelete()) // Remove the unrevved files
-        .pipe(sourcemaps.write('.'))
+        .pipe(postcss(IS_PROD ?
+            [autoprefixer('last 2 version', '>= 5%'), cssnano()] :
+            [autoprefixer('last 2 version', '>= 5%')]
+        ))
+        .pipe(IF(IS_PROD, rename(outputFile)))
+        .pipe(IF(IS_PROD, rev()))
+        .pipe(IF(IS_PROD, sourcemaps.write('.')))
         .pipe(gulp.dest(outputDir))
-        .pipe(rev.manifest({
+        .pipe(IF(IS_PROD, rev.manifest({
             base: destDir,
             merge: true
-        }))
-        .pipe(gulp.dest(destDir));
+        })))
+        .pipe(IF(IS_PROD, gulp.dest(destDir)));
 }
 
 // build sass files
@@ -108,6 +122,8 @@ gulp.task('sass', () =>
 gulp.task('sass:watch', () =>
     gulp.watch(`${sourceDir}/sass/**/*.scss`, ['sass'])
 );
+
+/* ====================  JAVASCRIPT  ==================== */
 
 /**
  * Bundles a JavaScript file from a given entry path to a given output path
@@ -136,20 +152,17 @@ function bundleJS({ entry, output } = { entry: `${sourceDir}/js/main.js`, output
         })
         .pipe(source(outputFile))
         .pipe(buffer())
-        .pipe(sourcemaps.init())
-        .pipe(uglify())
-        .pipe(rev())
-        .pipe(revDelete()) // Remove the unrevved files
-        .pipe(sourcemaps.write('.'))
+        .pipe(IF(IS_PROD, sourcemaps.init()))
+        .pipe(IF(IS_PROD, uglify()))
+        .pipe(IF(IS_PROD, rev()))
+        .pipe(IF(IS_PROD, sourcemaps.write('.')))
         .pipe(gulp.dest(outputDir))
-        .pipe(rev.manifest({
+        .pipe(IF(IS_PROD, rev.manifest({
             base: destDir,
             merge: true
-        }))
-        .pipe(gulp.dest(destDir));
+        })))
+        .pipe(IF(IS_PROD, gulp.dest(destDir)));
 }
-
-/* ====================  JAVASCRIPT  ==================== */
 
 // main.js - main script
 gulp.task('main', () =>
@@ -181,7 +194,7 @@ gulp.task('js:watch', () =>
 // copy and minify json files
 gulp.task('json', () =>
     gulp.src([`${sourceDir}/**/*.json`])
-        .pipe(jsonminify())
+        .pipe(IF(IS_PROD, jsonminify()))
         .pipe(gulp.dest(destDir))
 );
 
@@ -196,26 +209,26 @@ gulp.task('json:watch', () =>
 
 /* ====================  IMAGES  ==================== */
 
-// build images for production
-gulp.task('images:build', () =>
+// build images
+gulp.task('images', () =>
     gulp.src(`${sourceDir}/images/**`)
-        .pipe(imagemin([
+        .pipe(IF(IS_PROD, imagemin([
             imagemin.gifsicle({ interlaced: true }),
             imagemin.jpegtran({ progressive: true }),
             imagemin.optipng({ optimizationLevel: 7 })
-        ]))
+        ])))
+        .pipe(IF(IS_PROD, rev()))
         .pipe(gulp.dest(`${destDir}/images`))
-);
-
-// build images for development
-gulp.task('images:dev', () =>
-    gulp.src(`${sourceDir}/images/**`)
-        .pipe(gulp.dest(`${destDir}/images`))
+        .pipe(IF(IS_PROD, rev.manifest({
+            base: destDir,
+            merge: true
+        })))
+        .pipe(IF(IS_PROD, gulp.dest(destDir)))
 );
 
 // watch images
 gulp.task('images:watch', () =>
-    gulp.watch(`${sourceDir}/images/**`, ['images:dev'])
+    gulp.watch(`${sourceDir}/images/**`, ['images'])
         .on('change', browserSync.reload)
 );
 
@@ -234,7 +247,7 @@ gulp.task('move-rev-manifest', done =>
     runSequence('copy-rev-manifest', 'delete-rev-manifest', () => done())
 );
 
-gulp.task('revRewrite', ['move-rev-manifest'], function () {
+gulp.task('rev-rewrite', ['move-rev-manifest'], function () {
     const manifest = gulp.src(`${destDir}/rev-manifest.json`);
 
     return gulp.src(`${destDir}/**/*`)
@@ -245,12 +258,15 @@ gulp.task('revRewrite', ['move-rev-manifest'], function () {
 /* ====================  SIZE  ==================== */
 
 gulp.task('sizereport', () =>
-    gulp.src([
-        `!./${destDir}/**/*.map`, // ignore sourcemaps
-        `./${destDir}/**/*`
-    ]).pipe(sizereport({
-        gzip: true
-    }))
+    IS_DEV ?
+        false :
+        gulp.src([
+            `!./${destDir}/**/*.map`, // ignore sourcemaps
+            `!./${destDir}/**/rev-manifest.json`, // ignore rev-manifest
+            `./${destDir}/**/*`
+        ]).pipe(sizereport({
+            gzip: true
+        }))
 );
 
 /* ====================  BROWSER-SYNC  ==================== */
@@ -264,20 +280,12 @@ gulp.task('browser-sync', () =>
     })
 );
 
-// production build
-gulp.task('build:prod', done =>
+// build
+gulp.task('build', done =>
     // first delete the destination folder
-    // then build for production
-    // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', 'html-copy', ['sass', 'js', 'json', 'images:build'], 'revRewrite', 'critical', 'html-minify', 'sizereport', () => done())
-);
-
-// development build
-gulp.task('build:dev', done =>
-    // first delete the destination folder
-    // then build for development
-    // sass has to run before html so that crtical styles cand be inlined
-    runSequence('del', 'html-copy', ['sass', 'js', 'json', 'images:dev'], 'revRewrite', 'critical', 'html-minify', 'sizereport', () => done())
+    // then build
+    // html has to be the last to run so that crtical styles cand be inlined
+    runSequence('del', ['sass', 'js', 'json', 'images'], 'html', 'sizereport', () => done())
 );
 
 // watch
@@ -285,8 +293,8 @@ gulp.task('watch', ['html:watch', 'js:watch', 'sass:watch', 'json:watch', 'image
 
 // serve
 gulp.task('serve', done =>
-    // first build for development
+    // first build
     // then start watching files 
-    // then start the development server
-    runSequence('build:dev', 'watch', 'browser-sync', () => done())
+    // then start the server
+    runSequence('build', 'watch', 'browser-sync', () => done())
 );
