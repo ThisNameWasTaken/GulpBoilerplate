@@ -90,10 +90,10 @@ function bundleSASS({ entry, output } = { entry: `${sourceDir}/sass/main.scss`, 
         .pipe(sourcemaps.write('.'))
         .pipe(gulp.dest(outputDir))
         .pipe(rev.manifest({
-            base: './dist/',
+            base: destDir,
             merge: true
         }))
-        .pipe(gulp.dest('dist'));
+        .pipe(gulp.dest(destDir));
 }
 
 // build sass files
@@ -143,10 +143,10 @@ function bundleJS({ entry, output } = { entry: `${sourceDir}/js/main.js`, output
         .pipe(sourcemaps.write('.'))
         .pipe(gulp.dest(outputDir))
         .pipe(rev.manifest({
-            base: './dist/',
+            base: destDir,
             merge: true
         }))
-        .pipe(gulp.dest('dist'));
+        .pipe(gulp.dest(destDir));
 }
 
 /* ====================  JAVASCRIPT  ==================== */
@@ -235,19 +235,19 @@ gulp.task('move-rev-manifest', done =>
 );
 
 gulp.task('revRewrite', ['move-rev-manifest'], function () {
-    const manifest = gulp.src('dist/rev-manifest.json');
+    const manifest = gulp.src(`${destDir}/rev-manifest.json`);
 
-    return gulp.src('dist/**/*')
+    return gulp.src(`${destDir}/**/*`)
         .pipe(revRewrite({ manifest: manifest }))
-        .pipe(gulp.dest('dist'));
+        .pipe(gulp.dest(destDir));
 });
 
 /* ====================  SIZE  ==================== */
 
 gulp.task('sizereport', () =>
     gulp.src([
-        '!./dist/**/*.map', // ignore sourcemaps
-        './dist/**/*'
+        `!./${destDir}/**/*.map`, // ignore sourcemaps
+        `./${destDir}/**/*`
     ]).pipe(sizereport({
         gzip: true
     }))
