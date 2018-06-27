@@ -27,6 +27,8 @@ const ejs = require('gulp-ejs')                 // ejs templating engine
 
 const sourceDir = 'src';
 const destDir = 'dist';
+const sassDir = 'sass';
+const cssDir = 'css';
 
 // environment constants
 const IS_DEV = process.argv.includes('--development');
@@ -89,18 +91,9 @@ gulp.task('html:watch', () =>
 
 /* ====================  SASS  ==================== */
 
-/**
- * Bundles a sass file from a given entry path to a given output path
- * @param {Object} param0 
- * @param {String} param0.entry - path to the entry file
- * @param {String} param0.output - path to the output file
- */
-function bundleSASS({ entry, output } = { entry: `${sourceDir}/sass/main.scss`, output: `${destDir}/css/main.css` }) {
-    const splitPath = output.split('/');
-    const outputFile = splitPath[splitPath.length - 1];
-    const outputDir = splitPath.slice(0, -1).join('/');
-
-    return gulp.src(entry)
+// build sass files
+gulp.task('sass', () =>
+    gulp.src(`${sourceDir}/${sassDir}/*.{sass,scss,css}`)
         .pipe(plumber())
         .pipe(IF(IS_PROD, sourcemaps.init()))
         .pipe(sass({ includePaths: ['node_modules'] }).on('error', sass.logError))
@@ -108,23 +101,15 @@ function bundleSASS({ entry, output } = { entry: `${sourceDir}/sass/main.scss`, 
             [autoprefixer('last 2 version', '>= 5%'), cssnano()] :
             [autoprefixer('last 2 version', '>= 5%')]
         ))
-        .pipe(IF(IS_PROD, rename(outputFile)))
         .pipe(IF(IS_PROD, rev()))
         .pipe(IF(IS_PROD, sourcemaps.write('.')))
-        .pipe(gulp.dest(outputDir))
+        .pipe(gulp.dest(`${destDir}/${cssDir}`))
         .pipe(IF(IS_PROD, rev.manifest({
             base: destDir,
             merge: true
         })))
-        .pipe(IF(IS_PROD, gulp.dest(destDir)));
-}
-
-// build sass files
-gulp.task('sass', () =>
-    bundleSASS({
-        entry: `${sourceDir}/sass/main.scss`,
-        output: `${destDir}/css/main.css`
-    }).pipe(browserSync.stream())
+        .pipe(IF(IS_PROD, gulp.dest(destDir)))
+        .pipe(browserSync.stream())
 );
 
 // watch sass files
