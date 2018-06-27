@@ -23,6 +23,7 @@ const rev = require('gulp-rev');                // handles static asset revision
 const revRewrite = require('gulp-rev-rewrite'); // rewrites occurences of filenames which have been renamed
 const IF = require('gulp-if');                  // helps with conditional piping
 const compression = require('compression');     // compression middleware (for serving gzipped files with browser-sync)
+const ejs = require('gulp-ejs')                 // ejs templating engine
 
 const sourceDir = 'src';
 const destDir = 'dist';
@@ -40,8 +41,15 @@ gulp.task('del', done =>
 
 // copy html files
 gulp.task('html-copy', () =>
-    gulp.src(`${sourceDir}/**/*.html`)
+    gulp.src(`${sourceDir}/views/*.html`)
         .pipe(gulp.dest(destDir))
+);
+
+// ejs
+gulp.task('ejs', () =>
+    gulp.src(`${sourceDir}/views/*.ejs`)
+        .pipe(ejs({}, {}, { ext: '.html' }))
+        .pipe(gulp.dest(destDir + '/'))
 );
 
 // minify html files
@@ -68,8 +76,8 @@ gulp.task('critical', function () {
 
 // build
 gulp.task('html', done => IS_PROD ?
-    runSequence('html-copy', 'rev-rewrite', 'critical', 'html-minify', () => done()) :
-    runSequence('html-copy', () => done())
+    runSequence('ejs', 'html-copy', 'rev-rewrite', 'critical', 'html-minify', () => done()) :
+    runSequence('ejs', 'html-copy', () => done())
 );
 
 
