@@ -22,6 +22,7 @@ const plumber = require('gulp-plumber');        // prevents task chains from bei
 const rev = require('gulp-rev');                // handles static asset revisioning by appending content hash to filenames unicorn.css → unicorn-d41d8cd98f.css
 const revRewrite = require('gulp-rev-rewrite'); // rewrites occurences of filenames which have been renamed
 const IF = require('gulp-if');                  // helps with conditional piping
+const compression = require('compression');     // compression middleware (for serving gzipped files with browser-sync)
 
 const sourceDir = 'src';
 const destDir = 'dist';
@@ -276,7 +277,8 @@ gulp.task('browser-sync', () =>
         server: {
             baseDir: destDir
         },
-        port: 3000
+        port: 3000,
+        middleware: IS_PROD ? [compression()] : []
     })
 );
 
