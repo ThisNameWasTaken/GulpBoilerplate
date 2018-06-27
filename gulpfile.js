@@ -121,7 +121,7 @@ gulp.task('sass', () =>
 
 // watch sass files
 gulp.task('sass:watch', () =>
-    gulp.watch(`${sourceDir}/sass/**/*.scss`, ['sass'])
+    gulp.watch(`${sourceDir}/sass/**/*.{sass,scss,css}`, ['sass'])
 );
 
 /* ====================  JAVASCRIPT  ==================== */
