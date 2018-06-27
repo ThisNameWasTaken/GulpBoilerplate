@@ -83,7 +83,7 @@ gulp.task('html', done => IS_PROD ?
 
 // watch html files
 gulp.task('html:watch', () =>
-    gulp.watch(`${sourceDir}/**/*.html`, ['html'])
+    gulp.watch(`${sourceDir}/**/*.{html,ejs}`, ['html'])
         .on('change', browserSync.reload)
 );
 
