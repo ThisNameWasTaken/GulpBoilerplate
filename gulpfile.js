@@ -24,11 +24,15 @@ const revRewrite = require('gulp-rev-rewrite'); // rewrites occurences of filena
 const IF = require('gulp-if');                  // helps with conditional piping
 const compression = require('compression');     // compression middleware (for serving gzipped files with browser-sync)
 const ejs = require('gulp-ejs')                 // ejs templating engine
+const foreach = require('gulp-flatmap');        // loop through files
+const path = require('path');                   // path module
 
 const sourceDir = 'src';
 const destDir = 'dist';
 const sassDir = 'sass';
 const cssDir = 'css';
+const jsDir = 'js';
+const serviceWorker = 'serviceWorker.js';
 
 // environment constants
 const IS_DEV = process.argv.includes('--development');
@@ -158,24 +162,33 @@ function bundleJS({ entry, output } = { entry: `${sourceDir}/js/main.js`, output
         .pipe(IF(IS_PROD, gulp.dest(destDir)));
 }
 
-// main.js - main script
-gulp.task('main', () =>
+// main js task - bundles all javascript files except for the service worker script
+gulp.task('main-js', () =>
+    gulp.src(`${sourceDir}/${jsDir}/*.js`)
+        .pipe(foreach(function (stream, file) {
+            const fileName = path.basename(file.path);
+
+            if (fileName == serviceWorker) {
+                return stream;
+            }
+
+            return bundleJS({
+                entry: `${sourceDir}/${jsDir}/${fileName}`,
+                output: `${destDir}/${jsDir}/${fileName}`
+            })
+        }))
+);
+
+// service worker script
+gulp.task('serviceWorker', () =>
     bundleJS({
-        entry: `${sourceDir}/js/main.js`,
-        output: `${destDir}/js/main.js`
+        entry: `${sourceDir}/${jsDir}/${serviceWorker}`,
+        output: `${destDir}/${serviceWorker}`
     })
 );
 
-// sw.js - service worker script
-gulp.task('sw', () =>
-    bundleJS({
-        entry: `${sourceDir}/sw.js`,
-        output: `${destDir}/sw.js`
-    })
-);
 
-// build js files
-gulp.task('js', ['main', 'sw']);
+gulp.task('js', ['main-js', 'serviceWorker']);
 
 // watch js files
 gulp.task('js:watch', () =>
